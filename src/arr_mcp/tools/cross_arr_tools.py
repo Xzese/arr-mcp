@@ -12,12 +12,14 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import Field
 
 from arr_mcp.constants import MEDIA_TYPE_TO_ARR, TOOL_VERSION, ArrServiceName, MediaType, service_key
+from arr_mcp.utils.emby_bridge import EmbyBridge
 from arr_mcp.utils.jellyfin_bridge import JellyfinBridge
+from arr_mcp.utils.plex_bridge import PlexBridge
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +39,16 @@ def register_cross_arr_tools(mcp, clients: dict, config) -> None:
         api_key=config.jellyfin.api_key,
         timeout=config.timeout,
     )
+    plex = PlexBridge(
+        base_url=config.plex.url,
+        token=config.plex.token,
+        timeout=config.timeout,
+    )
+    emby = EmbyBridge(
+        base_url=config.emby.url,
+        api_key=config.emby.api_key,
+        timeout=config.timeout,
+    )
 
     @mcp.tool(
         annotations={"readOnlyHint": False, "destructiveHint": False},
@@ -44,10 +56,10 @@ def register_cross_arr_tools(mcp, clients: dict, config) -> None:
     )
     async def arr_orchestrate(
         operation: Annotated[
-            Literal["request", "status", "check_jellyfin", "queue"],
-            Field(description="Operation: request a title, stack status, check Jellyfin, or show queue."),
+            Literal["request", "status", "check_jellyfin", "check_plex", "check_emby", "queue"],
+            Field(description="Operation: request a title, stack status, check Jellyfin/Plex/Emby, or show queue."),
         ],
-        media_title: Annotated[str | None, Field(description="Media title for request/check_jellyfin.")] = None,
+        media_title: Annotated[str | None, Field(description="Media title for request / media server check.")] = None,
         media_type: Annotated[
             str | None,
             Field(description="Media type: 'movie', 'series', 'album', 'book'. Auto-detected if omitted."),
@@ -55,12 +67,18 @@ def register_cross_arr_tools(mcp, clients: dict, config) -> None:
         year: Annotated[int | None, Field(description="Year for disambiguation.")] = None,
         quality_profile_id: Annotated[int | None, Field(description="Quality profile ID for auto-add.")] = None,
         root_folder_path: Annotated[str | None, Field(description="Root folder path for auto-add.")] = None,
+        media_server: Annotated[
+            str | None,
+            Field(
+                description="Media server to check: 'jellyfin', 'plex', 'emby', or None for auto (check all configured)."
+            ),
+        ] = None,
     ) -> dict:
-        """Cross-arr orchestration: check Jellyfin, auto-route to correct arr, stack status.
+        """Cross-arr orchestration: check Jellyfin/Plex/Emby, auto-route to correct arr, stack status.
 
-        **THE DIFFERENTIATOR** — this tool chains Jellyfin availability check
-        with automatic *arr routing.  "I want to watch Dune" → checks Jellyfin
-        first → if not found → auto-adds to Radarr.
+        **THE DIFFERENTIATOR** — chains media server availability checks
+        (Jellyfin + Plex + Emby) with automatic *arr routing. "I want to watch Dune"
+        → checks configured media servers → if not found → auto-adds to Radarr.
 
         ## Return Format
         {"success": bool, "message": str, "pipeline": [...], "data": {...}}
@@ -70,6 +88,8 @@ def register_cross_arr_tools(mcp, clients: dict, config) -> None:
         arr_orchestrate(operation="request", media_title="The Expanse", media_type="series")
         arr_orchestrate(operation="status")
         arr_orchestrate(operation="check_jellyfin", media_title="Inception")
+        arr_orchestrate(operation="check_plex", media_title="Inception")
+        arr_orchestrate(operation="check_emby", media_title="Inception")
         arr_orchestrate(operation="queue")
         """
         try:
@@ -91,24 +111,59 @@ def register_cross_arr_tools(mcp, clients: dict, config) -> None:
                     "data": result,
                 }
 
+            if operation == "check_plex":
+                if not media_title:
+                    return {"success": False, "message": "media_title is required", "pipeline": [], "data": {}}
+                mt = MediaType(media_type) if media_type else None
+                result = await plex.check_availability(media_title, media_type=mt)
+                return {
+                    "success": True,
+                    "message": f"{media_title} is {'IN' if result['in_library'] else 'NOT'} in Plex",
+                    "pipeline": ["plex_check"],
+                    "data": result,
+                }
+
+            if operation == "check_emby":
+                if not media_title:
+                    return {"success": False, "message": "media_title is required", "pipeline": [], "data": {}}
+                mt = MediaType(media_type) if media_type else None
+                result = await emby.check_availability(media_title, media_type=mt)
+                return {
+                    "success": True,
+                    "message": f"{media_title} is {'IN' if result['in_library'] else 'NOT'} in Emby",
+                    "pipeline": ["emby_check"],
+                    "data": result,
+                }
+
             if operation == "request":
                 if not media_title:
                     return {"success": False, "message": "media_title is required", "pipeline": [], "data": {}}
 
                 pipeline: list[str] = []
-
-                # Step 1: Jellyfin availability check
                 mt = MediaType(media_type) if media_type else None
-                jf_result = await jellyfin.check_availability(media_title, media_type=mt)
-                pipeline.append("jellyfin_check")
 
-                if jf_result["in_library"]:
-                    return {
-                        "success": True,
-                        "message": f"'{media_title}' is already available in your Jellyfin library.",
-                        "pipeline": pipeline,
-                        "data": {"in_library": True, "source": "jellyfin", **jf_result},
-                    }
+                # Step 1: Media server availability check
+                servers_to_check: list[tuple[str, Any, str]] = []
+                if media_server is None or media_server == "jellyfin":
+                    servers_to_check.append(("jellyfin", jellyfin, "jellyfin_check"))
+                if media_server is None or media_server == "plex":
+                    servers_to_check.append(("plex", plex, "plex_check"))
+                if media_server is None or media_server == "emby":
+                    servers_to_check.append(("emby", emby, "emby_check"))
+
+                for server_name, bridge, step_label in servers_to_check:
+                    if bridge.is_configured:
+                        result = await bridge.check_availability(media_title, media_type=mt)
+                        pipeline.append(step_label)
+                        if result["in_library"]:
+                            return {
+                                "success": True,
+                                "message": f"'{media_title}' is already available in your {server_name.title()} library.",
+                                "pipeline": pipeline,
+                                "data": {"in_library": True, "source": server_name, **result},
+                            }
+                    else:
+                        pipeline.append(f"{server_name}_not_configured")
 
                 # Step 2: Auto-detect media type if not specified
                 if not mt:

@@ -1,4 +1,4 @@
-# arr-mcp — Implementation Plan
+﻿# arr-mcp — Implementation Plan
 
 **FastMCP 3.2.4+ Python MCP server for the complete *arr automation stack.**
 

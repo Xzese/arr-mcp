@@ -128,7 +128,7 @@ class TestBaseArrClient:
         assert wanted["totalRecords"] == 0
 
     @pytest.mark.asyncio
-    async     def test_client_close(self, radarr):
+    async def test_client_close(self, radarr):
         await radarr.close()
         assert radarr._client is None or radarr._client.is_closed
 

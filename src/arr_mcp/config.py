@@ -25,6 +25,24 @@ class JellyfinConfig(BaseModel):
         return bool(self.url and self.api_key)
 
 
+class PlexConfig(BaseModel):
+    url: str = ""
+    token: str = ""
+
+    @property
+    def is_configured(self) -> bool:
+        return bool(self.url and self.token)
+
+
+class EmbyConfig(BaseModel):
+    url: str = ""
+    api_key: str = ""
+
+    @property
+    def is_configured(self) -> bool:
+        return bool(self.url and self.api_key)
+
+
 class MCPTransportConfig(BaseModel):
     transport: str = Field(default="stdio")
     host: str = Field(default="127.0.0.1")
@@ -47,6 +65,8 @@ class ArrConfig(BaseModel):
     overseerr: ArrServiceConfig = Field(default_factory=ArrServiceConfig)
     bazarr: ArrServiceConfig = Field(default_factory=ArrServiceConfig)
     jellyfin: JellyfinConfig = Field(default_factory=JellyfinConfig)
+    plex: PlexConfig = Field(default_factory=PlexConfig)
+    emby: EmbyConfig = Field(default_factory=EmbyConfig)
     transport: MCPTransportConfig = Field(default_factory=MCPTransportConfig)
     sampling: SamplingConfig = Field(default_factory=SamplingConfig)
     log_level: str = Field(default="INFO")
@@ -108,6 +128,14 @@ class ArrConfig(BaseModel):
             jellyfin=JellyfinConfig(
                 url=os.getenv("JELLYFIN_URL", ""),
                 api_key=os.getenv("JELLYFIN_API_KEY", ""),
+            ),
+            plex=PlexConfig(
+                url=os.getenv("PLEX_URL", ""),
+                token=os.getenv("PLEX_TOKEN", ""),
+            ),
+            emby=EmbyConfig(
+                url=os.getenv("EMBY_URL", ""),
+                api_key=os.getenv("EMBY_API_KEY", ""),
             ),
             transport=MCPTransportConfig(
                 transport=os.getenv("ARR_MCP_TRANSPORT", "stdio"),

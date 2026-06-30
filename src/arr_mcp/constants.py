@@ -11,6 +11,8 @@ READARR_DEFAULT_PORT = 8787
 OVERSEERR_DEFAULT_PORT = 5055
 BAZARR_DEFAULT_PORT = 6767
 JELLYFIN_DEFAULT_PORT = 8096
+PLEX_DEFAULT_PORT = 32400
+EMBY_DEFAULT_PORT = 8096
 
 # Tool version for all portmanteau tools
 TOOL_VERSION = "1.0.0"
@@ -25,6 +27,8 @@ SERVICE_KEYS = {
     "overseerr": "Overseerr",
     "bazarr": "Bazarr",
     "jellyfin": "Jellyfin",
+    "plex": "Plex",
+    "emby": "Emby",
 }
 
 # API base paths

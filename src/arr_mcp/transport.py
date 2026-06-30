@@ -58,9 +58,18 @@ def _run_http(
 
     app = FastAPI(title=server_name, version=__version__)
 
+    _tauri = os.environ.get("ARR_TAURI", "").lower() in ("1", "true", "yes")
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=[
+            "http://127.0.0.1:10938",
+            "http://localhost:10938",
+            "http://goliath:10938",
+            "http://tauri.localhost",
+            "https://tauri.localhost",
+            "tauri://localhost",
+        ],
+        allow_origin_regex=r"https?://tauri\.localhost(:\d+)?" if _tauri else None,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

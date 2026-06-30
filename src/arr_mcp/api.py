@@ -20,6 +20,28 @@ logger = logging.getLogger(__name__)
 def create_api_router(clients: dict, log_buffer: collections.deque | list[dict] | None = None) -> APIRouter:
     router = APIRouter(prefix="/api")
 
+    # ── diagnostics (CUA-NSIS smoke test) ───────────────────────
+
+    @router.get("/diagnostics")
+    async def api_diagnostics():
+        try:
+            import psutil
+
+            cpu = psutil.cpu_percent()
+            mem = psutil.virtual_memory().percent
+            disk = psutil.disk_usage("/").percent
+        except ImportError:
+            cpu = mem = disk = None
+        return JSONResponse(
+            content={
+                "success": True,
+                "backend": {"port": 10938, "status": "running"},
+                "system": {"cpu_percent": cpu, "memory_percent": mem, "disk_percent": disk},
+                "tools": {"total": sum(1 for c in clients.values() if c is not None)},
+                "cua_status": {"tesseract_available": False, "window_found": False},
+            }
+        )
+
     # ── health check (all services) ──────────────────────────────
 
     @router.get("/health")

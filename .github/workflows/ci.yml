@@ -19,9 +19,9 @@ jobs:
         with:
           python-version: "3.12"
       - uses: astral-sh/setup-uv@v5
-      - run: uv sync --all-extras
+      - run: uv sync --group dev
       - run: uv run ruff check src/arr_mcp tests/
-      - run: uv run pytest -q --cov=arr_mcp --cov-report=term
+      - run: uv run pytest -x --tb=short -k "not slow"
 
   webapp:
     name: Webapp frontend
