@@ -5,7 +5,7 @@ description = "FastMCP 3.3+ MCP server for the complete *arr automation stack"
 readme = "README.md"
 license = { text = "MIT" }
 authors = [
-    { name = "Sandra Schipal", email = "sandra@schipal.dev" }
+    { name = "Sandra Schipal", email = "sandraschipal@gmail.com" }
 ]
 keywords = ["mcp", "radarr", "sonarr", "lidarr", "prowlarr", "readarr", "bazarr", "automation"]
 classifiers = [
@@ -18,7 +18,7 @@ classifiers = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "fastmcp>=3.2.0",
+    "fastmcp>=3.4.4,<4",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
     "python-dotenv>=1.0.0",
@@ -35,7 +35,7 @@ dev = [
     "pytest-asyncio>=0.23.0,<1.0.0",
     "pytest-cov>=4.0.0,<5.0.0",
     "pytest-httpx>=0.30.0",
-    "ruff>=0.14.0",
+    "ruff>=0.16.0,<0.17",
     "mypy>=1.8.0,<2.0.0",
     "pre-commit>=3.6.0",
 ]
@@ -46,7 +46,7 @@ dev = [
     "pytest-asyncio>=0.23.0,<1.0.0",
     "pytest-cov>=4.0.0,<5.0.0",
     "pytest-httpx>=0.30.0",
-    "ruff>=0.14.0",
+    "ruff>=0.16.0,<0.17",
     "mypy>=1.8.0,<2.0.0",
     "pre-commit>=3.6.0",
 ]
