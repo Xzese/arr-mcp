@@ -1,0 +1,13 @@
+{
+    "product_name": "arr-mcp",
+    "install_dir": "%LOCALAPPDATA%\\arr-mcp",
+    "operator_exe": "arr-mcp-native.exe",
+    "backend_process_names": ["arr-mcp-native", "arr-mcp-native-backend"],
+    "backend_port": 10938,
+    "health_path": "/api/v1/health",
+    "diagnostics_path": "/api/v1/diagnostics",
+    "feature_smoke_path": "/api/v1/diagnostics",
+    "window_title_re": "arr-mcp",
+    "nsis_glob": "native/target/release/bundle/nsis/arr-mcp_*_x64-setup.exe",
+    "uninstall_registry_filter": "*arr-mcp*"
+}

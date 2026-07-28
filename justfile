@@ -1,4 +1,4 @@
-set windows-shell := ["pwsh.exe", "-NoLogo", "-Command"]
+set windows-shell := ["powershell.exe", "-NoProfile", "-Command"]
 import 'scripts/just/fleet.just'
 
 default:
@@ -36,12 +36,8 @@ build-native-debug:
     $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
     npx @tauri-apps/cli build --debug
 
-# Run CUA smoke test against installed NSIS app
-cua-nsis-test:
-    C:\Windows\py.exe scripts/cua-smoke.py
-
 tauri-sidecar:
-    pwsh -NoLogo -File '{{justfile_directory()}}\native\build-sidecar.ps1'
+    powershell.exe -NoProfile -File '{{justfile_directory()}}\native\build-sidecar.ps1'
 
 tauri-build:
     Set-Location '{{justfile_directory()}}\native'

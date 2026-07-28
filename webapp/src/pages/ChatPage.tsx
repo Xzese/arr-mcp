@@ -1,4 +1,4 @@
-import { Bot, Loader2, Send, Settings, User } from "lucide-react";
+import { Bot, Download, Loader2, Send, Settings, Trash2, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
 	type LLMConfig,
@@ -11,24 +11,66 @@ import {
 	saveLLMConfig,
 } from "../utils/llm";
 
+const LS_KEY = "arr-mcp-chat-history";
+const PERS_KEY = "arr-mcp-chat-personality";
+
 interface Message {
 	role: "user" | "assistant" | "system";
 	content: string;
 }
 
+const PERSONALITIES = [
+	{ id: "arr-expert", label: "*arr Expert", prompt: "You are an expert in Radarr, Sonarr, Lidarr, Readarr, and the full *arr stack." },
+	{ id: "media-curator", label: "Media Curator", prompt: "You help curate media libraries with quality and organization in mind." },
+	{ id: "quick-summarizer", label: "Quick Summarizer", prompt: "Keep responses brief and to the point." },
+	{ id: "custom", label: "Custom", prompt: "" },
+];
+
+const EXAMPLE_PROMPTS = [
+	{ group: "Media", items: [
+		"Show me the latest movies added",
+		"What TV shows are missing episodes?",
+		"List artists with missing albums",
+	]},
+	{ group: "Health", items: [
+		"Check all *arr service health",
+		"Find stalled downloads",
+		"Show indexer status",
+	]},
+	{ group: "Requests", items: [
+		"What movies are currently requested?",
+		"Search for a movie to add",
+		"Approve pending media requests",
+	]},
+];
+
+function loadHistory(): Message[] {
+	try { const d = localStorage.getItem(LS_KEY); return d ? JSON.parse(d) : []; } catch { return []; }
+}
+function saveHistory(msgs: Message[]) {
+	try { localStorage.setItem(LS_KEY, JSON.stringify(msgs.slice(-100))); } catch {}
+}
+function loadPersonality(): string {
+	try { return localStorage.getItem(PERS_KEY) || "arr-expert"; } catch { return "arr-expert"; }
+}
+
 export default function ChatPage() {
 	const [config, setConfig] = useState<LLMConfig>(loadLLMConfig);
-	const [messages, setMessages] = useState<Message[]>([]);
+	const [messages, setMessages] = useState<Message[]>(() => loadHistory());
 	const [input, setInput] = useState("");
 	const [loading, setLoading] = useState(false);
 	const [models, setModels] = useState<(OllamaModel | LMStudioModel)[]>([]);
 	const [showSettings, setShowSettings] = useState(!config.selectedModel);
 	const [loadingModels, setLoadingModels] = useState(false);
+	const [personalityId, setPersonalityId] = useState(() => loadPersonality());
 	const chatEndRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
 		chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
 	}, [messages]);
+
+	useEffect(() => { saveHistory(messages); }, [messages]);
+	useEffect(() => { localStorage.setItem(PERS_KEY, personalityId); }, [personalityId]);
 
 	useEffect(() => {
 		if (config.provider !== "none") {
@@ -79,24 +121,71 @@ export default function ChatPage() {
 		}
 	}
 
+	const exportChat = () => {
+		const text = messages.map(m => `${m.role === "user" ? "You" : "Assistant"}: ${m.content}`).join("\n\n");
+		const blob = new Blob([text], { type: "text/plain" });
+		const url = URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = `arr-chat-${new Date().toISOString().slice(0, 10)}.txt`;
+		a.click();
+		URL.revokeObjectURL(url);
+	};
+
 	return (
-		<div className="animate-fade-in flex flex-col h-[calc(100vh-6rem)]">
+		<div className="animate-fade-in flex flex-col h-[calc(100vh-6rem)]" data-testid="chat-page">
 			<div className="flex items-center justify-between mb-4">
 				<div className="flex items-center gap-3">
 					<Bot size={24} className="text-zinc-300" />
 					<h2 className="text-2xl font-bold">Chat</h2>
+					<span className="text-xs text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded" data-testid="skill-badge">
+						arr-mcp
+					</span>
+					<span className={`inline-block w-2 h-2 rounded-full ${config.provider === "none" ? "bg-red-500" : "bg-green-500"}`} data-testid="backend-dot" />
 					<span className="text-xs text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded">
 						{config.provider === "none" ? "No LLM" : config.provider === "ollama" ? "Ollama" : "LM Studio"}
 					</span>
 				</div>
-				<button
-					type="button"
-					onClick={() => setShowSettings(!showSettings)}
-					className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm text-zinc-300 transition-colors"
-				>
-					<Settings size={14} />
-					<span>Settings</span>
-				</button>
+				<div className="flex items-center gap-2" data-testid="chat-controls">
+					<select
+						value={personalityId}
+						onChange={(e) => setPersonalityId(e.target.value)}
+						className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-xs text-zinc-200"
+						data-testid="personality-select"
+					>
+						{PERSONALITIES.map(p => (
+							<option key={p.id} value={p.id}>{p.label}</option>
+						))}
+					</select>
+					<button
+						type="button"
+						onClick={exportChat}
+						disabled={messages.length === 0}
+						className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm text-zinc-300 transition-colors disabled:opacity-40"
+						data-testid="chat-export"
+					>
+						<Download size={14} />
+						<span>Export</span>
+					</button>
+					<button
+						type="button"
+						onClick={() => setMessages([])}
+						disabled={messages.length === 0}
+						className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm text-red-300 transition-colors disabled:opacity-40"
+						data-testid="chat-clear"
+					>
+						<Trash2 size={14} />
+						<span>Clear</span>
+					</button>
+					<button
+						type="button"
+						onClick={() => setShowSettings(!showSettings)}
+						className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm text-zinc-300 transition-colors"
+					>
+						<Settings size={14} />
+						<span>Settings</span>
+					</button>
+				</div>
 			</div>
 
 			{showSettings && (
@@ -195,50 +284,64 @@ export default function ChatPage() {
 				</div>
 			)}
 
-			<div className="flex-1 overflow-y-auto bg-zinc-900 border border-zinc-800 rounded-xl p-4 mb-4">
-				{messages.length === 0 && (
-					<div className="text-center text-zinc-500 mt-20">
-						<Bot size={48} className="mx-auto mb-3 text-zinc-700" />
-						<p className="text-lg font-medium">arr-mcp Chat</p>
-						<p className="text-sm mt-1">
-							{config.provider === "none"
-								? "Configure Ollama or LM Studio in Settings to start chatting."
-								: `Connected to ${config.provider === "ollama" ? "Ollama" : "LM Studio"} — select a model to begin.`}
-						</p>
-					</div>
-				)}
-				{messages.map((msg, i) => (
-					<div key={`msg-${i}`} className={`flex gap-3 mb-4 ${msg.role === "user" ? "justify-end" : ""}`}>
-						{msg.role === "assistant" && (
+			<div className="flex-1 overflow-y-auto bg-zinc-900 border border-zinc-800 rounded-xl p-4 mb-4" data-testid="dashboard">
+				<div data-testid="chat-messages">
+					{messages.length === 0 && (
+						<div className="text-center text-zinc-500 mt-20">
+							<Bot size={48} className="mx-auto mb-3 text-zinc-700" />
+							<p className="text-lg font-medium">arr-mcp Chat</p>
+							<p className="text-sm mt-1">
+								{config.provider === "none"
+									? "Configure Ollama or LM Studio in Settings to start chatting."
+									: `Connected to ${config.provider === "ollama" ? "Ollama" : "LM Studio"} — select a model to begin.`}
+							</p>
+							<div className="flex flex-wrap gap-2 justify-center mt-4" data-testid="example-prompts">
+								{EXAMPLE_PROMPTS.flatMap(g => g.items).map((p, i) => (
+									<button
+										key={i}
+										type="button"
+										onClick={() => setInput(p)}
+										className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-400 px-2 py-1 rounded border border-zinc-700 transition-colors"
+									>
+										{p}
+									</button>
+								))}
+							</div>
+						</div>
+					)}
+					{messages.map((msg, i) => (
+						<div key={`msg-${i}`} className={`flex gap-3 mb-4 ${msg.role === "user" ? "justify-end" : ""}`}>
+							{msg.role === "assistant" && (
+								<div className="shrink-0 w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center">
+									<Bot size={16} />
+								</div>
+							)}
+							<div
+								className={`max-w-[70%] rounded-xl px-4 py-2.5 text-sm ${
+									msg.role === "user" ? "bg-zinc-700 text-zinc-100" : "bg-zinc-800 text-zinc-300"
+								}`}
+							>
+								<pre className="whitespace-pre-wrap font-sans">{msg.content}</pre>
+							</div>
+							{msg.role === "user" && (
+								<div className="shrink-0 w-8 h-8 rounded-full bg-zinc-600 flex items-center justify-center">
+									<User size={16} />
+								</div>
+							)}
+						</div>
+					))}
+					{loading && (
+						<div className="flex gap-3 mb-4">
 							<div className="shrink-0 w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center">
 								<Bot size={16} />
 							</div>
-						)}
-						<div
-							className={`max-w-[70%] rounded-xl px-4 py-2.5 text-sm ${
-								msg.role === "user" ? "bg-zinc-700 text-zinc-100" : "bg-zinc-800 text-zinc-300"
-							}`}
-						>
-							<pre className="whitespace-pre-wrap font-sans">{msg.content}</pre>
-						</div>
-						{msg.role === "user" && (
-							<div className="shrink-0 w-8 h-8 rounded-full bg-zinc-600 flex items-center justify-center">
-								<User size={16} />
+							<div className="bg-zinc-800 rounded-xl px-4 py-2.5">
+								<Loader2 size={16} className="animate-spin text-zinc-400" />
 							</div>
-						)}
-					</div>
-				))}
-				{loading && (
-					<div className="flex gap-3 mb-4">
-						<div className="shrink-0 w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center">
-							<Bot size={16} />
 						</div>
-						<div className="bg-zinc-800 rounded-xl px-4 py-2.5">
-							<Loader2 size={16} className="animate-spin text-zinc-400" />
-						</div>
-					</div>
-				)}
-				<div ref={chatEndRef} />
+					)}
+					<div ref={chatEndRef} />
+				</div>
 			</div>
 
 			<div className="flex gap-2">
@@ -252,12 +355,14 @@ export default function ChatPage() {
 					rows={2}
 					className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm resize-none focus:outline-none focus:border-zinc-600 placeholder:text-zinc-600"
 					disabled={config.provider === "none" || !config.selectedModel}
+					data-testid="chat-input"
 				/>
 				<button
 					type="button"
 					onClick={sendMessage}
 					disabled={loading || !input.trim() || config.provider === "none" || !config.selectedModel}
 					className="px-4 py-2.5 bg-zinc-700 hover:bg-zinc-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-colors self-end"
+					data-testid="chat-send"
 				>
 					<Send size={16} />
 				</button>

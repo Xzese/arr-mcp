@@ -56,7 +56,9 @@ def _run_http(
     os.environ.setdefault("FASTMCP_STATELESS_HTTP", "1")
     os.environ.setdefault("FASTMCP_LOG_LEVEL", os.getenv("ARR_MCP_LOG_LEVEL", "INFO"))
 
-    app = FastAPI(title=server_name, version=__version__)
+    mcp_app = mcp.http_app(path=path, transport=transport)
+
+    app = FastAPI(title=server_name, version=__version__, lifespan=mcp_app.lifespan)
 
     _tauri = os.environ.get("ARR_TAURI", "").lower() in ("1", "true", "yes")
     app.add_middleware(
@@ -84,7 +86,6 @@ def _run_http(
 
             return RedirectResponse("/api/health", status_code=307)
 
-    mcp_app = mcp.http_app(path=path, transport=transport)
     app.mount("/", mcp_app)
 
     uvicorn.run(app, host=host, port=port, log_level="warning")

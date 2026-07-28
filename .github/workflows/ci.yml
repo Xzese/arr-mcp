@@ -2,9 +2,8 @@ name: CI
 
 on:
   push:
-    branches: [master, main]
-  pull_request:
-    branches: [master, main]
+    tags: ["v*"]
+  workflow_dispatch:
 
 jobs:
   backend:
@@ -25,7 +24,7 @@ jobs:
 
   webapp:
     name: Webapp frontend
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     defaults:
       run:
         working-directory: webapp
