@@ -46,3 +46,7 @@ webapp/blob-report/
 native/target/
 native/gen/
 native/binaries/
+
+# Runtime logs
+*.log
+
