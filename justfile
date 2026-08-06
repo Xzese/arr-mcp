@@ -82,3 +82,9 @@ ci: lint typecheck test
 
 clean:
     Get-ChildItem -Recurse -Include '__pycache__','*.pyc','.pytest_cache','.ruff_cache','.mypy_cache' -Path . | Remove-Item -Recurse -Force
+
+# Bootstrap: install dev deps + pre-commit hook
+bootstrap:
+    uv sync --group dev
+    uv run pre-commit install
+    Write-Host "Pre-commit hooks installed." -ForegroundColor Green
