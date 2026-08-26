@@ -1,4 +1,4 @@
-"""Unified transport runner — STDIO / HTTP / SSE.
+"""Unified transport runner - STDIO / HTTP / SSE.
 
 In HTTP mode, builds a FastAPI app with CORS, the REST API router,
 and mounts the MCP ASGI app. In STDIO mode, runs bare.
@@ -26,6 +26,10 @@ def run_server(
 ) -> None:
     transport, cli_port = parse_argv_flags()
     transport = os.getenv("ARR_MCP_TRANSPORT") or transport
+    # Tauri spawn passes ARR_TAURI=1 (no MCP_TRANSPORT/--http); force HTTP so the
+    # frozen backend opens the port the webview polls instead of running stdio.
+    if os.getenv("ARR_TAURI", "").lower() in ("1", "true", "yes"):
+        transport = "http"
 
     if transport == "stdio":
         logger.info("Starting %s in STDIO mode", server_name)
@@ -37,7 +41,7 @@ def run_server(
         logger.info("Starting %s in %s mode on %s:%d%s", server_name, transport.upper(), host, port, path)
         _run_http(mcp, server_name, host, port, path, transport, api_router)
     else:
-        logger.error("Unknown transport %r — falling back to stdio", transport)
+        logger.error("Unknown transport %r - falling back to stdio", transport)
         mcp.run(transport="stdio")
 
 
