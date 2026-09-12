@@ -8,6 +8,7 @@ from typing import Annotated, Literal
 from pydantic import Field
 
 from arr_mcp.constants import TOOL_VERSION
+from arr_mcp.tools.readarr_book_mutations import register_readarr_book_mutation_tools
 
 logger = logging.getLogger(__name__)
 
@@ -146,3 +147,5 @@ def register_readarr_tools(mcp, client) -> None:
         except Exception as e:
             logger.exception("readarr_books failed: %s", e)
             return {"success": False, "message": str(e), "data": {}}
+
+    register_readarr_book_mutation_tools(mcp, client)

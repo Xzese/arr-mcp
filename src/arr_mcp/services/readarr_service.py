@@ -27,6 +27,23 @@ class ReadarrClient(BaseArrClient):
             timeout=timeout,
         )
 
+    async def _delete(
+        self,
+        path: str,
+        json: dict[str, Any] | None = None,
+        **params: Any,
+    ) -> dict[str, Any]:
+        """Readarr DELETE endpoints may return a successful empty response."""
+        client = await self._ensure_client()
+        if json is not None:
+            resp = await client.request("DELETE", path, params=params, json=json)
+        else:
+            resp = await client.delete(path, params=params)
+        resp.raise_for_status()
+        if not resp.content:
+            return {}
+        return resp.json()
+
     # ── authors ───────────────────────────────────────────────────
 
     async def get_authors(self) -> list[dict[str, Any]]:
@@ -85,6 +102,27 @@ class ReadarrClient(BaseArrClient):
     async def lookup_book(self, term: str) -> list[dict[str, Any]]:
         return await self._get(f"{self.api_path}/book/lookup", term=term)  # type: ignore[return-value]
 
+    async def search(self, term: str) -> list[dict[str, Any]]:
+        """Search Readarr's aggregate endpoint for an exact book identity."""
+        return await self._get(f"{self.api_path}/search", term=term)  # type: ignore[return-value]
+
+    async def add_book(
+        self,
+        foreign_book_id: str,
+        author: dict[str, Any],
+        monitored: bool = True,
+        search_for_new_book: bool = False,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "foreignBookId": foreign_book_id,
+            "monitored": monitored,
+            "author": author,
+            "addOptions": {"searchForNewBook": search_for_new_book},
+            **kwargs,
+        }
+        return await self._post(f"{self.api_path}/book", json=payload)
+
     async def update_book(self, book_id: int, **fields: Any) -> dict[str, Any]:
         book = await self.get_book(book_id)
         book.update(fields)
@@ -96,10 +134,16 @@ class ReadarrClient(BaseArrClient):
             json={"bookIds": book_ids, "monitored": monitored},
         )
 
-    async def delete_book(self, book_id: int, delete_files: bool = False) -> dict[str, Any]:
+    async def delete_book(
+        self,
+        book_id: int,
+        delete_files: bool = False,
+        add_import_list_exclusion: bool = False,
+    ) -> dict[str, Any]:
         return await self._delete(  # type: ignore[return-value]
             f"{self.api_path}/book/{book_id}",
             deleteFiles=delete_files,
+            addImportListExclusion=add_import_list_exclusion,
         )
 
     # ── book files ────────────────────────────────────────────────
@@ -118,6 +162,9 @@ class ReadarrClient(BaseArrClient):
 
     async def get_book_file(self, file_id: int) -> dict[str, Any]:
         return await self._get(f"{self.api_path}/bookfile/{file_id}")  # type: ignore[return-value]
+
+    async def get_metadata_profiles(self) -> list[dict[str, Any]]:
+        return await self._get(f"{self.api_path}/metadataprofile")  # type: ignore[return-value]
 
     async def delete_book_file(self, file_id: int) -> dict[str, Any]:
         return await self._delete(f"{self.api_path}/bookfile/{file_id}")  # type: ignore[return-value]
