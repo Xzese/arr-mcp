@@ -47,8 +47,8 @@ _TOOL_REGISTRY: dict[str, dict[str, Any]] = {
         "service": "readarr",
     },
     "arr_readarr_books": {
-        "description": "Readarr book management — list, get, lookup, set_monitored.",
-        "operations": ["list", "get", "lookup", "set_monitored"],
+        "description": "Readarr book management — list, get, metadata lookup, native download search, set_monitored.",
+        "operations": ["list", "get", "lookup", "search", "set_monitored"],
         "service": "readarr",
     },
     "arr_prowlarr_indexers": {

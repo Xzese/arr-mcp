@@ -27,23 +27,6 @@ class ReadarrClient(BaseArrClient):
             timeout=timeout,
         )
 
-    async def _delete(
-        self,
-        path: str,
-        json: dict[str, Any] | None = None,
-        **params: Any,
-    ) -> dict[str, Any]:
-        """Readarr DELETE endpoints may return a successful empty response."""
-        client = await self._ensure_client()
-        if json is not None:
-            resp = await client.request("DELETE", path, params=params, json=json)
-        else:
-            resp = await client.delete(path, params=params)
-        resp.raise_for_status()
-        if not resp.content:
-            return {}
-        return resp.json()
-
     # ── authors ───────────────────────────────────────────────────
 
     async def get_authors(self) -> list[dict[str, Any]]:

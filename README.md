@@ -92,11 +92,50 @@ omit that override, and `none` leaves the author unmonitored. Use
 author. `search_for_new_book` is disabled by default, and no edition selector
 is exposed.
 
+To **add and search immediately**, pass `search_for_new_book=true` to
+`readarr_add_book`. This uses Readarr's native `addOptions.searchForNewBook`
+in the add request, searching only the added book. For example, after looking
+up the exact foreign book ID for an existing author:
+
+```python
+readarr_add_book(foreign_book_id="<exact-work-id>", author_id=7, search_for_new_book=True)
+```
+
+For a book already in the library, use
+`readarr_books(operation="search", book_id=123)`. The tool verifies that exact
+positive Readarr ID exists, then submits `BookSearch` with `bookIds=[123]` to
+`/api/v1/command`. Its response includes the native command ID and status;
+submission does not mean a download has completed. Search may automatically
+grab a matching release using the author's quality profile (for example,
+Spoken for audiobooks). `operation="lookup"` remains a metadata lookup.
+
 Book deletion is a dry run by default and previews the ID, title, author, and
 file implications. Actual deletion removes only the requested book record;
 the author is retained. Files are kept unless `delete_files=true` is paired
 with `confirm_delete_files=true`. Bulk deletion preflights all unique IDs,
 accepts at most 100, then deletes sequentially and stops on the first failure.
+
+DELETE calls accept successful empty responses (including HTTP 200/204)
+across Radarr, Sonarr, Lidarr, Prowlarr, Readarr and Overseerr. This also covers
+book/episode file deletion and bulk blocklist deletion. Empty responses return
+`{}` instead of a JSON parsing error. HTTP failures and malformed nonempty
+responses still surface as errors.
+
+### Radarr and Sonarr list exclusions
+
+Both delete operations accept `add_import_list_exclusion` (default `false`),
+matching the **Add List Exclusion** checkbox. Set it to `true` to prevent
+import lists from re-adding the deleted movie or series. File deletion remains
+a separate option, `delete_files`, also defaulting to `false`.
+
+```python
+radarr_movies(operation="delete", movie_id=42, add_import_list_exclusion=True)
+sonarr_series(operation="delete", series_id=42, add_import_list_exclusion=True)
+```
+
+The shared tool argument maps to Radarr's `addImportExclusion` query parameter
+and Sonarr's `addImportListExclusion`. Pass `delete_files=True` separately if
+the associated files should also be deleted.
 
 ## Supported Services
 

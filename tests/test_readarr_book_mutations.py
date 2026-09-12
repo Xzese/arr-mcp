@@ -253,6 +253,39 @@ class TestReadarrAddBookTool:
         assert parse_qs(lookup_requests[0].url.query.decode())["term"] == ["work:book-123"]
 
     @pytest.mark.asyncio
+    async def test_existing_author_can_opt_into_native_book_search_without_extra_command_post(
+        self, readarr, httpx_mock
+    ):
+        author = _author()
+        requests = _mock_readarr(
+            httpx_mock,
+            authors=[author],
+            books=[],
+            lookup_books=[
+                {
+                    "foreignBookId": "book-123",
+                    "foreignEditionId": "edition-123",
+                    "authorId": 7,
+                    "title": "Selected Book",
+                    "author": {"foreignAuthorId": "author-7"},
+                }
+            ],
+        )
+        _, tools = _tools(readarr)
+
+        result = await tools["readarr_add_book"](
+            foreign_book_id="book-123",
+            author_id=7,
+            search_for_new_book=True,
+        )
+
+        assert result["success"] is True
+        posts = _requests(requests, "POST", f"{API_ROOT}/book")
+        assert len(posts) == 1
+        assert json.loads(posts[0].content)["addOptions"] == {"searchForNewBook": True}
+        assert _requests(requests, "POST", f"{API_ROOT}/command") == []
+
+    @pytest.mark.asyncio
     async def test_new_author_defaults_to_requested_book_monitoring(self, readarr, httpx_mock):
         requests = _mock_readarr(
             httpx_mock,

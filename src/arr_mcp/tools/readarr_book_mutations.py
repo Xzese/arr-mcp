@@ -312,7 +312,7 @@ def register_readarr_book_mutation_tools(mcp, client) -> None:
         # contract. New callers should use monitor/monitor_new_books.
         monitored: Annotated[bool, Field(description="Whether the requested book is monitored.")] = True,
         search_for_new_book: Annotated[
-            bool, Field(description="Search indexers for this book after adding it.")
+            bool, Field(description="Set true to start Readarr's native download search immediately after adding this book. Defaults false.")
         ] = False,
     ) -> dict[str, Any]:
         """Add exactly one Readarr book using an exact lookup edition.
@@ -320,6 +320,10 @@ def register_readarr_book_mutation_tools(mcp, client) -> None:
         Use an existing ``author_id`` to reuse its configuration, or provide
         all four new-author fields. New-author monitoring controls map to
         Readarr's author add options; existing authors retain their settings.
+        Set ``search_for_new_book=true`` to add and immediately search using
+        Readarr's native addOptions.searchForNewBook. A matching release may
+        be downloaded using the author's quality profile. This does not enable
+        searching the author's other books.
         """
         try:
             if not isinstance(foreign_book_id, str) or not foreign_book_id.strip():
