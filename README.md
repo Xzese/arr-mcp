@@ -15,7 +15,7 @@ FastMCP 3.3 MCP server for the complete *arr automation stack — Radarr, Sonarr
 ## Features
 
 - **7 services, 1 MCP server** — Radarr (Movies), Sonarr (TV), Lidarr (Music), Prowlarr (Indexers), Readarr (Books), Overseerr (Requests), Bazarr (Subtitles)
-- **25 MCP tools** — 22 portmanteau tools + 3 Prefab card tools, 109+ operations
+- **29 MCP tools** — 22 portmanteau tools + 1 Readarr options tool + 3 Readarr mutation tools + 3 Prefab card tools, 112+ operations
 - **Cross-arr orchestration** — request a title, auto-routes to correct arr with Jellyfin availability check
 - **Prefab-UI cards** — `arr_health_card`, `arr_calendar_card`, `arr_stats_card` — rich interactive cards in Claude Desktop, Cursor
 - **Prowlarr indexer backbone** — unified search across all indexers
@@ -43,7 +43,7 @@ cd arr-mcp
 cp .env.example .env
 # Edit .env — add your *arr URLs and API keys
 
-# 3. Run
+# 3. Run from the checkout
 uv sync
 uv run arr-mcp
 
@@ -52,6 +52,90 @@ cd webapp
 npm install
 npm run dev        # → http://localhost:10939
 ```
+
+For a local checkout launcher using STDIO (keep API keys and other secrets in
+the external environment), use:
+
+```bash
+ARR_MCP_TRANSPORT=stdio uvx --from /absolute/checkout --with-editable /absolute/checkout arr-mcp
+```
+
+Restart the local process after changing source files so the editable checkout
+is loaded again. This command runs the checkout directly; it does not publish
+or install a fork.
+
+### Readarr book mutations
+
+Before adding a book for a new author, call the read-only
+`readarr_add_options` tool. It returns the available `root_folders` (including
+their paths and default profile/tag IDs), `quality_profiles`,
+`metadata_profiles`, and existing `tags` as safe ID/name choices. Use those
+IDs and the selected root-folder path in `readarr_add_book`; the discovery
+tool filters connection details and does not create tags or change Readarr
+settings. It also reports the supported `monitor_modes` and
+`monitor_new_books_modes` values. Existing authors keep their current Readarr
+configuration.
+
+The dedicated `readarr_add_book`, `readarr_delete_book`, and
+`readarr_delete_books` tools operate on exact IDs. Adding a book requires an
+existing `author_id` (which reuses that author's quality, metadata, and root
+folder configuration) or all four new-author values: `foreign_author_id`,
+`quality_profile_id`, `metadata_profile_id`, and `root_folder_path`. Readarr's
+exact foreign-book lookup is checked for a single match and duplicates or
+ambiguous results are rejected; incomplete lookup identity is enriched through
+Readarr's exact search endpoint. A new author is created only as the side
+effect of adding the requested book. The default `monitor="specific_book"`
+maps to Readarr's `monitor="all"` plus `booksToMonitor=[foreign_book_id]`;
+catalogue modes (`all`, `future`, `missing`, `existing`, `first`, `latest`)
+omit that override, and `none` leaves the author unmonitored. Use
+`monitor_new_books="all"|"none"|"new"` and `tags` to control the new
+author. `search_for_new_book` is disabled by default, and no edition selector
+is exposed.
+
+To **add and search immediately**, pass `search_for_new_book=true` to
+`readarr_add_book`. This uses Readarr's native `addOptions.searchForNewBook`
+in the add request, searching only the added book. For example, after looking
+up the exact foreign book ID for an existing author:
+
+```python
+readarr_add_book(foreign_book_id="<exact-work-id>", author_id=7, search_for_new_book=True)
+```
+
+For a book already in the library, use
+`readarr_books(operation="search", book_id=123)`. The tool verifies that exact
+positive Readarr ID exists, then submits `BookSearch` with `bookIds=[123]` to
+`/api/v1/command`. Its response includes the native command ID and status;
+submission does not mean a download has completed. Search may automatically
+grab a matching release using the author's quality profile (for example,
+Spoken for audiobooks). `operation="lookup"` remains a metadata lookup.
+
+Book deletion is a dry run by default and previews the ID, title, author, and
+file implications. Actual deletion removes only the requested book record;
+the author is retained. Files are kept unless `delete_files=true` is paired
+with `confirm_delete_files=true`. Bulk deletion preflights all unique IDs,
+accepts at most 100, then deletes sequentially and stops on the first failure.
+
+DELETE calls accept successful empty responses (including HTTP 200/204)
+across Radarr, Sonarr, Lidarr, Prowlarr, Readarr and Overseerr. This also covers
+book/episode file deletion and bulk blocklist deletion. Empty responses return
+`{}` instead of a JSON parsing error. HTTP failures and malformed nonempty
+responses still surface as errors.
+
+### Radarr and Sonarr list exclusions
+
+Both delete operations accept `add_import_list_exclusion` (default `false`),
+matching the **Add List Exclusion** checkbox. Set it to `true` to prevent
+import lists from re-adding the deleted movie or series. File deletion remains
+a separate option, `delete_files`, also defaulting to `false`.
+
+```python
+radarr_movies(operation="delete", movie_id=42, add_import_list_exclusion=True)
+sonarr_series(operation="delete", series_id=42, add_import_list_exclusion=True)
+```
+
+The shared tool argument maps to Radarr's `addImportExclusion` query parameter
+and Sonarr's `addImportListExclusion`. Pass `delete_files=True` separately if
+the associated files should also be deleted.
 
 ## Supported Services
 
@@ -98,7 +182,7 @@ npm run dev        # → http://localhost:10939
 arr-mcp/
 ├── src/arr_mcp/             # Python backend (FastMCP 3.3)
 │   ├── services/            # 8 arr clients (BaseArrClient + 7 arrs)
-│   ├── tools/               # 25 MCP tools (22 portmanteau + 3 prefab cards)
+│   ├── tools/               # 29 MCP tools (22 portmanteau + 1 Readarr options + 3 mutations + 3 prefab cards)
 │   ├── prefabs.py           # Prefab-UI card builders (health, calendar, stats, orchestrate)
 │   ├── utils/               # Jellyfin bridge
 │   ├── api.py               # REST router with /api/{service}/summary

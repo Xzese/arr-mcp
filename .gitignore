@@ -50,3 +50,7 @@ native/binaries/
 # Runtime logs
 *.log
 
+# Machine-local repository indexing and editor integration
+.repowise/
+.mcp.json
+.claude/

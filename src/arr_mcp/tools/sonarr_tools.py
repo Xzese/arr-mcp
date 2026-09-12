@@ -35,8 +35,14 @@ def register_sonarr_tools(mcp, client) -> None:
         monitored: Annotated[bool, Field(description="Monitored status for add/update.")] = True,
         search_for_missing: Annotated[bool, Field(description="Search for missing episodes after add.")] = True,
         delete_files: Annotated[bool, Field(description="Also delete files when deleting series.")] = False,
+        add_import_list_exclusion: Annotated[
+            bool, Field(description="When deleting, prevent import lists from adding this series again. Defaults false.")
+        ] = False,
     ) -> dict:
         """Manage Sonarr series: list, search, add, delete, update.
+
+        On deletion, add_import_list_exclusion=true matches Add List Exclusion.
+        This is independent of delete_files, which defaults to false.
 
         ## Return Format
         {"success": bool, "message": str, "data": [...]}
@@ -44,6 +50,7 @@ def register_sonarr_tools(mcp, client) -> None:
         ## Examples
         sonarr_series(operation="list")
         sonarr_series(operation="lookup", term="Breaking Bad")
+        sonarr_series(operation="delete", series_id=42, add_import_list_exclusion=True)
         sonarr_series(operation="add", tvdb_id=81189, quality_profile_id=1, root_folder_path="/tv")
         """
         try:
@@ -83,7 +90,9 @@ def register_sonarr_tools(mcp, client) -> None:
             if operation == "delete":
                 if not series_id:
                     return {"success": False, "message": "series_id is required for delete", "data": {}}
-                await client.delete_series(series_id, delete_files=delete_files)
+                await client.delete_series(
+                    series_id, delete_files=delete_files, add_import_list_exclusion=add_import_list_exclusion
+                )
                 return {"success": True, "message": f"Deleted series {series_id}", "data": {}}
 
             if operation == "update":

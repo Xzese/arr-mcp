@@ -42,8 +42,14 @@ def register_radarr_tools(mcp, client) -> None:
         search_for_movie: Annotated[bool, Field(description="Search immediately after add.")] = True,
         delete_files: Annotated[bool, Field(description="Also delete files when deleting movie.")] = False,
         folder: Annotated[str | None, Field(description="Folder path for manual import.")] = None,
+        add_import_list_exclusion: Annotated[
+            bool, Field(description="When deleting, prevent import lists from adding this movie again. Defaults false.")
+        ] = False,
     ) -> dict:
         """Manage Radarr movies: list, search, add, delete, import.
+
+        On deletion, add_import_list_exclusion=true matches Add List Exclusion.
+        This is independent of delete_files, which defaults to false.
 
         ## Return Format
         {"success": bool, "message": str, "data": [...]}
@@ -53,6 +59,7 @@ def register_radarr_tools(mcp, client) -> None:
         radarr_movies(operation="lookup", term="Dune")
         radarr_movies(operation="add", tmdb_id=438631, quality_profile_id=1, root_folder_path="/movies")
         radarr_movies(operation="delete", movie_id=42, delete_files=True)
+        radarr_movies(operation="delete", movie_id=42, add_import_list_exclusion=True)
         """
         try:
             if operation == "list":
@@ -91,7 +98,9 @@ def register_radarr_tools(mcp, client) -> None:
             if operation == "delete":
                 if not movie_id:
                     return {"success": False, "message": "movie_id is required for delete", "data": {}}
-                await client.delete_movie(movie_id, delete_files=delete_files)
+                await client.delete_movie(
+                    movie_id, delete_files=delete_files, add_import_list_exclusion=add_import_list_exclusion
+                )
                 return {"success": True, "message": f"Deleted movie {movie_id}", "data": {}}
 
             if operation == "update":
