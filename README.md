@@ -1,13 +1,11 @@
 # arr-mcp
 
 <p align="center">
-  <a href="https://github.com/sandraschi/arr-mcp"><img src="https://img.shields.io/github/stars/sandraschi/arr-mcp?style=flat-square" alt="Stars"></a>
-  <a href="https://github.com/sandraschi/arr-mcp/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="License"></a>
+  <a href="https://github.com/Xzese/arr-mcp/stargazers"><img src="https://img.shields.io/github/stars/Xzese/arr-mcp?style=flat-square" alt="Stars"></a>
+  <a href="https://github.com/Xzese/arr-mcp/commits/master"><img src="https://img.shields.io/github/last-commit/Xzese/arr-mcp?style=flat-square" alt="Last commit"></a>
   <a href="https://python.org"><img src="https://img.shields.io/badge/Python-3.12+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python"></a>
   <a href="https://github.com/PrefectHQ/fastmcp"><img src="https://img.shields.io/badge/FastMCP-3.3-7c5cfc?style=flat-square" alt="FastMCP"></a>
-  <a href=""><img src="https://img.shields.io/badge/stack-*arr-00ADD8?style=flat-square" alt="*arr Stack"></a>
-  <a href=""><img src="https://img.shields.io/badge/tests-143-success?style=flat-square" alt="Tests"></a>
-  <a href=""><img src="https://img.shields.io/badge/fleet-SOTA-6366f1?style=flat-square" alt="Fleet SOTA"></a>
+  <a href="https://github.com/Xzese/arr-mcp"><img src="https://img.shields.io/badge/stack-*arr-00ADD8?style=flat-square" alt="*arr Stack"></a>
 </p>
 
 FastMCP 3.3 MCP server for the complete *arr automation stack — Radarr, Sonarr, Lidarr, Prowlarr, Readarr, Overseerr, and Bazarr — under a single MCP interface.
